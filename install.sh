@@ -80,9 +80,11 @@ cp "$PHP_INI" "${PHP_INI}.backup"
 
 # Update PHP configuration to allow larger file uploads
 echo "Adjusting PHP size limits in $PHP_INI..."
-sed -i 's/^\s*upload_max_filesize\s*=.*/upload_max_filesize = 9999M/' "$PHP_INI"
-sed -i 's/^\s*post_max_size\s*=.*/post_max_size = 9999M/' "$PHP_INI"
-sed -i 's/^\s*memory_limit\s*=.*/memory_limit = 512M/' "$PHP_INI"
+sed -i 's/^\s*upload_max_filesize\s*=.*/upload_max_filesize = 10G/' "$PHP_INI"
+sed -i 's/^\s*post_max_size\s*=.*/post_max_size = 11G/' "$PHP_INI"
+sed -i 's/^\s*memory_limit\s*=.*/memory_limit = 12G/' "$PHP_INI"
+sed -i 's/^\s*max_execution_time\s*=.*/max_execution_time = 3600/' "$PHP_INI"
+sed -i 's/^\s*max_input_time\s*=.*/max_input_time = 3600/' "$PHP_INI"
 echo "PHP configuration updated (backup saved as ${PHP_INI}.backup)"
 
 # (Optional) Enable Apache mod_rewrite if needed.
