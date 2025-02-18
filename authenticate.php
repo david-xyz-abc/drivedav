@@ -3,7 +3,7 @@ session_start();
 
 // In a real application, store credentials securely in a database.
 // Here we hard-code the valid username and password.
-$valid_username = "davdrive";
+$valid_username = "dav";
 $valid_password = "123"; // Replace with your desired password
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
