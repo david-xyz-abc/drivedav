@@ -1,9 +1,15 @@
 <?php
 session_start();
 
+// Debug output
+file_put_contents('/tmp/explorer_debug.log', "Explorer: Session ID: " . session_id() . "\n", FILE_APPEND);
+file_put_contents('/tmp/explorer_debug.log', "Explorer: Loggedin: " . (isset($_SESSION['loggedin']) ? var_export($_SESSION['loggedin'], true) : "Not set") . "\n", FILE_APPEND);
+file_put_contents('/tmp/explorer_debug.log', "Explorer: Full session: " . var_export($_SESSION, true) . "\n", FILE_APPEND);
+
 // Check if user is logged in
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
-    header("Location: index.php"); // Redirect to login page
+    file_put_contents('/tmp/explorer_debug.log', "Explorer: Redirecting to index.php due to no login\n", FILE_APPEND);
+    header("Location: index.php");
     exit;
 }
 
