@@ -1,11 +1,55 @@
 <?php
 session_start();
 
-$debug_log = '/tmp/explorer_debug.log';
+// Debug log setup
+$debug_log = '/var/www/html/selfhostedgdrive/debug.log'; // Moved from /tmp
+if (!file_exists($debug_log)) {
+    file_put_contents($debug_log, "Debug log initialized\n");
+    chown($debug_log, 'www-data');
+    chmod($debug_log, 0666);
+}
 file_put_contents($debug_log, "=== New Request ===\n", FILE_APPEND);
 file_put_contents($debug_log, "Session ID: " . session_id() . "\n", FILE_APPEND);
 file_put_contents($debug_log, "Loggedin: " . (isset($_SESSION['loggedin']) ? var_export($_SESSION['loggedin'], true) : "Not set") . "\n", FILE_APPEND);
+file_put_contents($debug_log, "GET params: " . var_export($_GET, true) . "\n", FILE_APPEND);
 
+// Handle file serving first
+if (isset($_GET['action']) && $_GET['action'] === 'serve' && isset($_GET['file'])) {
+    if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+        file_put_contents($debug_log, "Unauthorized file request, redirecting to index.php\n", FILE_APPEND);
+        header("Location: index.php");
+        exit;
+    }
+
+    $baseDir = realpath("/var/www/html/webdav/Home");
+    $filePath = realpath($baseDir . '/' . urldecode($_GET['file']));
+    file_put_contents($debug_log, "File request: " . $_GET['file'] . "\n", FILE_APPEND);
+    file_put_contents($debug_log, "Resolved file path: " . ($filePath ? $filePath : "Not found") . "\n", FILE_APPEND);
+
+    if ($filePath && strpos($filePath, $baseDir) === 0 && file_exists($filePath)) {
+        $mime = mime_content_type($filePath) ?: 'application/octet-stream';
+        file_put_contents($debug_log, "MIME type: $mime\n", FILE_APPEND);
+        header("Content-Type: $mime");
+        header("Content-Length: " . filesize($filePath));
+        if (!preg_match('/\.(png|jpe?g|gif|heic|mp4|webm|mov|avi|mkv)$/i', $filePath)) {
+            header('Content-Disposition: attachment; filename="' . basename($filePath) . '"');
+        } else {
+            header('Content-Disposition: inline; filename="' . basename($filePath) . '"');
+        }
+        ob_clean();
+        flush();
+        readfile($filePath);
+        file_put_contents($debug_log, "Served file: $filePath\n", FILE_APPEND);
+        exit;
+    } else {
+        file_put_contents($debug_log, "File not found or access denied: $filePath\n", FILE_APPEND);
+        header("HTTP/1.1 404 Not Found");
+        echo "File not found.";
+        exit;
+    }
+}
+
+// Check if user is logged in for page access
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     file_put_contents($debug_log, "Redirecting to index.php due to no login\n", FILE_APPEND);
     header("Location: index.php");
@@ -23,7 +67,7 @@ $baseDir = realpath($homeDirPath);
 file_put_contents($debug_log, "BaseDir: $baseDir\n", FILE_APPEND);
 
 // Redirect to Home folder by default if no folder specified
-if (!isset($_GET['folder']) && !isset($_GET['action'])) {
+if (!isset($_GET['folder'])) {
     file_put_contents($debug_log, "No folder specified, redirecting to Home\n", FILE_APPEND);
     header("Location: explorer.php?folder=Home");
     exit;
@@ -641,7 +685,7 @@ function isVideo($fileName) {
 
     function downloadFile(fileURL) {
       console.log("Downloading: " + fileURL);
-      window.location.href = fileURL; // Force download via server
+      window.location.href = fileURL; // Direct redirect to trigger download
     }
 
     const uploadForm = document.getElementById('uploadForm');
@@ -733,34 +777,3 @@ function isVideo($fileName) {
   </script>
 </body>
 </html>
-
-<?php
-// Handle file serving for authenticated users
-if (isset($_GET['action']) && $_GET['action'] === 'serve' && isset($_GET['file'])) {
-    file_put_contents($debug_log, "File request: " . $_GET['file'] . "\n", FILE_APPEND);
-    $filePath = realpath($baseDir . '/' . urldecode($_GET['file']));
-    file_put_contents($debug_log, "Resolved file path: " . ($filePath ? $filePath : "Not found") . "\n", FILE_APPEND);
-
-    if ($filePath && strpos($filePath, $baseDir) === 0 && file_exists($filePath)) {
-        $mime = mime_content_type($filePath) ?: 'application/octet-stream';
-        file_put_contents($debug_log, "MIME type: $mime\n", FILE_APPEND);
-        header("Content-Type: $mime");
-        header("Content-Length: " . filesize($filePath));
-        if (!isImage(basename($filePath)) && !isVideo(basename($filePath))) {
-            header('Content-Disposition: attachment; filename="' . basename($filePath) . '"');
-        } else {
-            header('Content-Disposition: inline; filename="' . basename($filePath) . '"');
-        }
-        ob_clean(); // Clear output buffer
-        flush(); // Flush system buffer
-        readfile($filePath);
-        file_put_contents($debug_log, "Served file: $filePath\n", FILE_APPEND);
-        exit;
-    } else {
-        file_put_contents($debug_log, "File not found or access denied: $filePath\n", FILE_APPEND);
-        header("HTTP/1.1 404 Not Found");
-        echo "File not found.";
-        exit;
-    }
-}
-?>
