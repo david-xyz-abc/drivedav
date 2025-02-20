@@ -1,13 +1,11 @@
 <?php
 session_start();
 
-// Debug log setup
 $debug_log = '/tmp/explorer_debug.log';
 file_put_contents($debug_log, "=== New Request ===\n", FILE_APPEND);
 file_put_contents($debug_log, "Session ID: " . session_id() . "\n", FILE_APPEND);
 file_put_contents($debug_log, "Loggedin: " . (isset($_SESSION['loggedin']) ? var_export($_SESSION['loggedin'], true) : "Not set") . "\n", FILE_APPEND);
 
-// Check if user is logged in
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     file_put_contents($debug_log, "Redirecting to index.php due to no login\n", FILE_APPEND);
     header("Location: index.php");
@@ -22,6 +20,7 @@ if (!is_dir($homeDirPath)) {
     mkdir($homeDirPath, 0777, true);
 }
 $baseDir = realpath($homeDirPath);
+file_put_contents($debug_log, "BaseDir: $baseDir\n", FILE_APPEND);
 
 // Redirect to Home folder by default if no folder specified
 if (!isset($_GET['folder'])) {
@@ -302,7 +301,6 @@ function isVideo($fileName) {
 </head>
 <body>
   <div class="app-container">
-    <!-- SIDEBAR -->
     <div class="sidebar" id="sidebar">
       <div class="folders-container">
         <div class="top-row">
@@ -327,7 +325,10 @@ function isVideo($fileName) {
         </div>
         <ul class="folder-list">
           <?php foreach ($folders as $folderName): ?>
-            <?php $folderPath = ($currentRel ? $currentRel . '/' : '') . $folderName; ?>
+            <?php 
+            $folderPath = ($currentRel === 'Home' ? '' : $currentRel . '/') . $folderName; 
+            file_put_contents($debug_log, "Folder path for $folderName: $folderPath\n", FILE_APPEND);
+            ?>
             <li class="folder-item"
                 ondblclick="openFolder('<?php echo urlencode($folderPath); ?>')"
                 onclick="selectFolder(this, '<?php echo addslashes($folderName); ?>'); event.stopPropagation();">
@@ -339,7 +340,6 @@ function isVideo($fileName) {
     </div>
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
-    <!-- MAIN CONTENT -->
     <div class="main-content">
       <div class="header-area">
         <div class="header-title">
@@ -368,9 +368,11 @@ function isVideo($fileName) {
         <div class="file-list">
           <?php foreach ($files as $fileName): ?>
             <?php
-              $fileURL = "/selfhostedgdrive/explorer.php?file=" . urlencode($currentRel . '/' . $fileName);
+              $relativePath = $currentRel . '/' . $fileName;
+              $fileURL = "/selfhostedgdrive/explorer.php?action=serve&file=" . urlencode($relativePath);
               $iconClass = getIconClass($fileName);
               $canPreview = (isImage($fileName) || isVideo($fileName));
+              file_put_contents($debug_log, "File URL for $fileName: $fileURL\n", FILE_APPEND);
             ?>
             <div class="file-row">
               <i class="<?php echo $iconClass; ?> file-icon"></i>
@@ -397,7 +399,6 @@ function isVideo($fileName) {
     </div>
   </div>
 
-  <!-- PREVIEW MODAL -->
   <div id="previewModal">
     <div id="previewContent">
       <span id="previewClose" onclick="closePreviewModal()"><i class="fas fa-times"></i></span>
@@ -405,7 +406,6 @@ function isVideo($fileName) {
     </div>
   </div>
 
-  <!-- DIALOG MODAL -->
   <div id="dialogModal">
     <div class="dialog-content">
       <div class="dialog-message" id="dialogMessage"></div>
@@ -741,13 +741,14 @@ function isVideo($fileName) {
 
 <?php
 // Handle file serving for authenticated users
-if (isset($_GET['file'])) {
+if (isset($_GET['action']) && $_GET['action'] === 'serve' && isset($_GET['file'])) {
     file_put_contents($debug_log, "File request: " . $_GET['file'] . "\n", FILE_APPEND);
-    $filePath = realpath($baseDir . '/' . $_GET['file']);
+    $filePath = realpath($baseDir . '/' . urldecode($_GET['file']));
     file_put_contents($debug_log, "Resolved file path: " . ($filePath ? $filePath : "Not found") . "\n", FILE_APPEND);
 
     if ($filePath && strpos($filePath, $baseDir) === 0 && file_exists($filePath)) {
         $mime = mime_content_type($filePath);
+        file_put_contents($debug_log, "MIME type: $mime\n", FILE_APPEND);
         header("Content-Type: $mime");
         if (!isImage(basename($filePath)) && !isVideo(basename($filePath))) {
             header('Content-Disposition: attachment; filename="' . basename($filePath) . '"');
