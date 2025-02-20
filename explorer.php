@@ -278,70 +278,434 @@ function isVideo($fileName) {
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"/>
   <style>
-    html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #121212; color: #fff; font-family: 'Poppins', sans-serif; overflow: hidden; }
-    .app-container { display: flex; width: 100%; height: 100%; position: relative; }
-    .sidebar { width: 270px; background: linear-gradient(135deg, #1e1e1e, #2a2a2a); border-right: 1px solid #333; display: flex; flex-direction: column; z-index: 9998; position: sticky; top: 0; height: 100vh; transform: translateX(-100%); transition: transform 0.3s ease; }
-    @media (min-width: 1024px) { .sidebar { transform: none; } }
-    .sidebar.open { transform: translateX(0); }
-    @media (max-width: 1023px) { .sidebar { position: fixed; top: 0; left: 0; height: 100%; } }
-    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9997; }
-    .sidebar-overlay.show { display: block; }
-    @media (min-width: 1024px) { .sidebar-overlay { display: none !important; } }
-    .folders-container { padding: 20px; overflow-y: auto; flex: 1; }
-    .top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; justify-content: flex-start; }
-    .top-row h2 { font-size: 18px; font-weight: 500; margin: 0; }
-    .btn { background: linear-gradient(135deg, #555, #777); color: #fff; border: none; border-radius: 4px; cursor: pointer; transition: background 0.3s, transform 0.2s; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 16px; text-decoration: none; }
-    .btn:hover { background: linear-gradient(135deg, #777, #555); transform: scale(1.05); }
-    .btn:active { transform: scale(0.95); }
-    .btn i { color: #fff; margin: 0; }
-    .btn-back { background: linear-gradient(135deg, #555, #777); color: #fff; border: none; border-radius: 4px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; transition: background 0.3s, transform 0.2s; text-decoration: none; }
-    .btn-back i { color: #fff; margin: 0; }
-    .btn-back:hover { background: linear-gradient(135deg, #777, #555); transform: scale(1.05); }
-    .btn-back:active { transform: scale(0.95); }
-    .logout-btn { background: linear-gradient(135deg, #b71c1c, #f44336) !important; }
-    .logout-btn:hover { background: linear-gradient(135deg, #f44336, #b71c1c) !important; }
-    .folder-list { list-style: none; margin: 0; padding: 0; }
-    .folder-item { padding: 8px 10px; margin-bottom: 5px; border-radius: 4px; background: #2a2a2a; cursor: pointer; transition: background 0.3s; }
-    .folder-item:hover { background: #333; }
-    .folder-item.selected { background: #444; transform: translateX(5px); }
-    .folder-item i { margin-right: 6px; }
-    .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
-    .header-area { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 20px; border-bottom: 1px solid #333; }
-    .header-title { display: flex; align-items: center; gap: 10px; }
-    .header-area h1 { font-size: 18px; font-weight: 500; margin: 0; }
-    .hamburger { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
-    @media (min-width: 1024px) { .hamburger { display: none; } }
-    .content-inner { flex: 1; overflow-y: auto; padding: 20px; }
-    .file-list { display: flex; flex-direction: column; gap: 8px; }
-    .file-row { display: flex; align-items: center; padding: 8px; background: #1e1e1e; border: 1px solid #333; border-radius: 4px; transition: box-shadow 0.3s ease, transform 0.2s; position: relative; }
-    .file-row:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.3); transform: translateX(5px); }
-    .file-icon { font-size: 20px; margin-right: 10px; flex-shrink: 0; }
-    .file-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 20px; cursor: pointer; }
-    .file-actions { display: flex; align-items: center; gap: 6px; }
-    .file-actions button { background: linear-gradient(135deg, #555, #777); border-radius: 4px; color: #fff; border: none; font-size: 14px; transition: background 0.3s, transform 0.2s; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
-    .file-actions button:hover { background: linear-gradient(135deg, #777, #555); transform: scale(1.05); }
-    .file-actions button:active { transform: scale(0.95); }
-    .file-actions button i { color: #fff; margin: 0; }
-    #fileInput { display: none; }
-    #uploadProgressContainer { display: none; position: fixed; bottom: 20px; right: 20px; width: 300px; background: #1e1e1e; border: 1px solid #333; padding: 10px; border-radius: 4px; z-index: 9999; }
-    #uploadProgressBar { height: 20px; width: 0%; background: linear-gradient(135deg, #555, #777); border-radius: 4px; transition: width 0.1s ease; }
-    #uploadProgressPercent { text-align: center; margin-top: 5px; font-weight: 500; }
-    .cancel-upload-btn { margin-top: 5px; padding: 6px 10px; background: #f44336; border: none; border-radius: 4px; cursor: pointer; transition: background 0.3s, transform 0.2s; }
-    .cancel-upload-btn:hover { background: #d32f2f; transform: scale(1.05); }
-    #previewModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 9998; }
-    #previewContent { position: relative; width: 100%; height: 100%; background: transparent; display: flex; align-items: center; justify-content: center; }
-    #previewClose { position: absolute; top: 20px; right: 20px; cursor: pointer; font-size: 30px; color: #fff; z-index: 9999; }
-    #previewContainer { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
-    #previewContainer img, #previewContainer video { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
-    #dialogModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 10000; }
-    #dialogModal.show { display: flex; }
-    .dialog-content { background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 20px; max-width: 90%; width: 400px; text-align: center; }
-    .dialog-message { margin-bottom: 20px; font-size: 16px; }
-    .dialog-buttons { display: flex; justify-content: center; gap: 10px; }
-    .dialog-button { background: linear-gradient(135deg, #555, #777); color: #fff; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer; transition: background 0.3s, transform 0.2s; }
-    .dialog-button:hover { background: linear-gradient(135deg, #777, #555); transform: scale(1.05); }
-    .dialog-button:active { transform: scale(0.95); }
-  </style>
+  :root {
+    --background: #121212;
+    --text-color: #fff;
+    --sidebar-bg: linear-gradient(135deg, #1e1e1e, #2a2a2a);
+    --content-bg: #1e1e1e;
+    --border-color: #333;
+    --button-bg: linear-gradient(135deg, #555, #777);
+    --button-hover: linear-gradient(135deg, #777, #555);
+    --accent-red: #d32f2f; /* Darker red for dark mode */
+  }
+  body.light-mode {
+    --background: #f5f5f5;
+    --text-color: #333;
+    --sidebar-bg: linear-gradient(135deg, #e0e0e0, #fafafa);
+    --content-bg: #fff;
+    --border-color: #ccc;
+    --button-bg: linear-gradient(135deg, #888, #aaa);
+    --button-hover: linear-gradient(135deg, #aaa, #888);
+    --accent-red: #f44336; /* Normal red for light mode */
+  }
+  html, body {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--background);
+    color: var(--text-color);
+    font-family: 'Poppins', sans-serif;
+    overflow: hidden;
+    transition: background 0.3s, color 0.3s;
+  }
+  .app-container {
+    display: flex;
+    width: 100%;
+    height: 100%;
+    position: relative;
+  }
+  .sidebar {
+    width: 270px;
+    background: var(--sidebar-bg);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    z-index: 9998;
+    position: sticky;
+    top: 0;
+    height: 100vh;
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+  }
+  @media (min-width: 1024px) {
+    .sidebar {
+      transform: none;
+    }
+  }
+  .sidebar.open {
+    transform: translateX(0);
+  }
+  @media (max-width: 1023px) {
+    .sidebar {
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100%;
+    }
+  }
+  .sidebar-overlay {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.5);
+    z-index: 9997;
+  }
+  .sidebar-overlay.show {
+    display: block;
+  }
+  @media (min-width: 1024px) {
+    .sidebar-overlay {
+      display: none !important;
+    }
+  }
+  .folders-container {
+    padding: 20px;
+    overflow-y: auto;
+    flex: 1;
+  }
+  .top-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 15px;
+    justify-content: flex-start;
+  }
+  .top-row h2 {
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0;
+    color: var(--text-color);
+  }
+  .btn {
+    background: var(--button-bg);
+    color: var(--text-color);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s, transform 0.2s;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 16px;
+    text-decoration: none;
+  }
+  .btn:hover {
+    background: var(--button-hover);
+    transform: scale(1.05);
+  }
+  .btn:active {
+    transform: scale(0.95);
+  }
+  .btn i {
+    color: var(--text-color);
+    margin: 0;
+  }
+  .btn-back {
+    background: var(--button-bg);
+    color: var(--text-color);
+    border: none;
+    border-radius: 4px;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.3s, transform 0.2s;
+    text-decoration: none;
+  }
+  .btn-back i {
+    color: var(--text-color);
+    margin: 0;
+  }
+  .btn-back:hover {
+    background: var(--button-hover);
+    transform: scale(1.05);
+  }
+  .btn-back:active {
+    transform: scale(0.95);
+  }
+  .logout-btn {
+    background: linear-gradient(135deg, var(--accent-red), #b71c1c) !important;
+  }
+  .logout-btn:hover {
+    background: linear-gradient(135deg, #b71c1c, var(--accent-red)) !important;
+  }
+  .folder-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+  .folder-item {
+    padding: 8px 10px;
+    margin-bottom: 5px;
+    border-radius: 4px;
+    background: var(--content-bg);
+    cursor: pointer;
+    transition: background 0.3s;
+  }
+  .folder-item:hover {
+    background: var(--border-color);
+  }
+  .folder-item.selected {
+    background: var(--accent-red);
+    color: #fff;
+    transform: translateX(5px);
+  }
+  .folder-item i {
+    margin-right: 6px;
+  }
+  .main-content {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+  .header-area {
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 20px;
+    border-bottom: 1px solid var(--border-color);
+    background: var(--background);
+  }
+  .header-title {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .header-area h1 {
+    font-size: 18px;
+    font-weight: 500;
+    margin: 0;
+    color: var(--text-color);
+  }
+  .hamburger {
+    background: none;
+    border: none;
+    color: var(--text-color);
+    font-size: 24px;
+    cursor: pointer;
+  }
+  @media (min-width: 1024px) {
+    .hamburger {
+      display: none;
+    }
+  }
+  .content-inner {
+    flex: 1;
+    overflow-y: auto;
+    padding: 20px;
+  }
+  .file-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .file-row {
+    display: flex;
+    align-items: center;
+    padding: 8px;
+    background: var(--content-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 4px;
+    transition: box-shadow 0.3s ease, transform 0.2s;
+    position: relative;
+  }
+  .file-row:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.3);
+    transform: translateX(5px);
+  }
+  .file-icon {
+    font-size: 20px;
+    margin-right: 10px;
+    flex-shrink: 0;
+  }
+  .file-name {
+    flex: 1;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-right: 20px;
+    cursor: pointer;
+  }
+  .file-name:hover {
+    border-bottom: 1px solid var(--accent-red);
+  }
+  .file-actions {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .file-actions button {
+    background: var(--button-bg);
+    border-radius: 4px;
+    color: var(--text-color);
+    border: none;
+    font-size: 14px;
+    transition: background 0.3s, transform 0.2s;
+    cursor: pointer;
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  .file-actions button:hover {
+    background: var(--button-hover);
+    transform: scale(1.05);
+  }
+  .file-actions button:active {
+    transform: scale(0.95);
+  }
+  .file-actions button i {
+    color: var(--text-color);
+    margin: 0;
+  }
+  #fileInput {
+    display: none;
+  }
+  #uploadProgressContainer {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    right: 20px;
+    width: 300px;
+    background: var(--content-bg);
+    border: 1px solid var(--border-color);
+    padding: 10px;
+    border-radius: 4px;
+    z-index: 9999;
+  }
+  #uploadProgressBar {
+    height: 20px;
+    width: 0%;
+    background: var(--button-bg);
+    border-radius: 4px;
+    transition: width 0.1s ease;
+  }
+  #uploadProgressPercent {
+    text-align: center;
+    margin-top: 5px;
+    font-weight: 500;
+  }
+  .cancel-upload-btn {
+    margin-top: 5px;
+    padding: 6px 10px;
+    background: var(--accent-red);
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.3s, transform 0.2s;
+  }
+  .cancel-upload-btn:hover {
+    background: #b71c1c;
+    transform: scale(1.05);
+  }
+  #previewModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    justify-content: center;
+    align-items: center;
+    z-index: 9998;
+  }
+  #previewContent {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    background: transparent;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+  #previewClose {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    cursor: pointer;
+    font-size: 30px;
+    color: #fff;
+    z-index: 9999;
+  }
+  #previewContainer {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+  }
+  #previewContainer img,
+  #previewContainer video {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    display: block;
+  }
+  #dialogModal {
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    justify-content: center;
+    align-items: center;
+    z-index: 10000;
+  }
+  #dialogModal.show {
+    display: flex;
+  }
+  .dialog-content {
+    background: var(--content-bg);
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 20px;
+    max-width: 90%;
+    width: 400px;
+    text-align: center;
+  }
+  .dialog-message {
+    margin-bottom: 20px;
+    font-size: 16px;
+  }
+  .dialog-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 10px;
+  }
+  .dialog-button {
+    background: var(--button-bg);
+    color: var(--text-color);
+    border: none;
+    border-radius: 4px;
+    padding: 6px 10px;
+    cursor: pointer;
+    transition: background 0.3s, transform 0.2s;
+  }
+  .dialog-button:hover {
+    background: var(--button-hover);
+    transform: scale(1.05);
+  }
+  .dialog-button:active {
+    transform: scale(0.95);
+  }
+  .theme-toggle-btn i {
+    color: var(--text-color);
+  }
+</style>
 </head>
 <body>
   <div class="app-container">
@@ -385,29 +749,32 @@ function isVideo($fileName) {
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <div class="main-content">
-      <div class="header-area">
-        <div class="header-title">
-          <button class="hamburger" onclick="toggleSidebar()">
-            <i class="fas fa-bars"></i>
-          </button>
-          <h1><?php echo ($currentRel === 'Home') ? 'Home' : htmlspecialchars($currentRel); ?></h1>
-        </div>
-        <div>
-          <form id="uploadForm" method="POST" enctype="multipart/form-data" action="explorer.php?folder=<?php echo urlencode($currentRel); ?>">
-            <input type="file" name="upload_files[]" multiple id="fileInput" style="display:none;" />
-            <button type="button" class="btn" id="uploadBtn" title="Upload" style="width:36px; height:36px;">
-              <i class="fas fa-cloud-upload-alt"></i>
-            </button>
-          </form>
-          <div id="uploadProgressContainer">
-            <div style="background:#333; width:100%; height:20px; border-radius:4px; overflow:hidden;">
-              <div id="uploadProgressBar"></div>
-            </div>
-            <div id="uploadProgressPercent">0%</div>
-            <button class="cancel-upload-btn" id="cancelUploadBtn">Cancel</button>
-          </div>
-        </div>
+    <div class="header-area">
+  <div class="header-title">
+    <button class="hamburger" onclick="toggleSidebar()">
+      <i class="fas fa-bars"></i>
+    </button>
+    <h1><?php echo ($currentRel === 'Home') ? 'Home' : htmlspecialchars($currentRel); ?></h1>
+  </div>
+  <div style="display: flex; gap: 10px;">
+    <form id="uploadForm" method="POST" enctype="multipart/form-data" action="explorer.php?folder=<?php echo urlencode($currentRel); ?>">
+      <input type="file" name="upload_files[]" multiple id="fileInput" style="display:none;" />
+      <button type="button" class="btn" id="uploadBtn" title="Upload" style="width:36px; height:36px;">
+        <i class="fas fa-cloud-upload-alt"></i>
+      </button>
+    </form>
+    <button type="button" class="btn theme-toggle-btn" id="themeToggleBtn" title="Toggle Theme" style="width:36px; height:36px;">
+      <i class="fas fa-moon"></i>
+    </button>
+    <div id="uploadProgressContainer">
+      <div style="background:var(--border-color); width:100%; height:20px; border-radius:4px; overflow:hidden;">
+        <div id="uploadProgressBar"></div>
       </div>
+      <div id="uploadProgressPercent">0%</div>
+      <button class="cancel-upload-btn" id="cancelUploadBtn">Cancel</button>
+    </div>
+  </div>
+</div>
       <div class="content-inner">
         <div class="file-list">
           <?php foreach ($files as $fileName): ?>
@@ -458,322 +825,344 @@ function isVideo($fileName) {
   </div>
 
   <script>
-    let selectedFolder = null;
-    let currentXhr = null;
+  let selectedFolder = null;
+  let currentXhr = null;
 
-    function toggleSidebar() {
-      const sb = document.getElementById('sidebar');
-      const overlay = document.getElementById('sidebarOverlay');
-      sb.classList.toggle('open');
-      overlay.classList.toggle('show');
-    }
-    document.getElementById('sidebarOverlay').addEventListener('click', toggleSidebar);
+  function toggleSidebar() {
+    const sb = document.getElementById('sidebar');
+    const overlay = document.getElementById('sidebarOverlay');
+    sb.classList.toggle('open');
+    overlay.classList.toggle('show');
+  }
+  document.getElementById('sidebarOverlay').addEventListener('click', toggleSidebar);
 
-    function selectFolder(element, folderName) {
-      document.querySelectorAll('.folder-item.selected').forEach(item => item.classList.remove('selected'));
-      element.classList.add('selected');
-      selectedFolder = folderName;
-      document.getElementById('btnDeleteFolder').style.display = 'flex';
-      document.getElementById('btnRenameFolder').style.display = 'flex';
-    }
-    function openFolder(folderPath) {
-      console.log("Opening folder: " + folderPath);
-      window.location.href = 'explorer.php?folder=' + folderPath;
-    }
+  function selectFolder(element, folderName) {
+    document.querySelectorAll('.folder-item.selected').forEach(item => item.classList.remove('selected'));
+    element.classList.add('selected');
+    selectedFolder = folderName;
+    document.getElementById('btnDeleteFolder').style.display = 'flex';
+    document.getElementById('btnRenameFolder').style.display = 'flex';
+  }
+  function openFolder(folderPath) {
+    console.log("Opening folder: " + folderPath);
+    window.location.href = 'explorer.php?folder=' + folderPath;
+  }
 
-    function showPrompt(message, defaultValue, callback) {
-      const dialogModal = document.getElementById('dialogModal');
-      const dialogMessage = document.getElementById('dialogMessage');
-      const dialogButtons = document.getElementById('dialogButtons');
+  function showPrompt(message, defaultValue, callback) {
+    const dialogModal = document.getElementById('dialogModal');
+    const dialogMessage = document.getElementById('dialogMessage');
+    const dialogButtons = document.getElementById('dialogButtons');
 
-      dialogMessage.innerHTML = '';
-      dialogButtons.innerHTML = '';
+    dialogMessage.innerHTML = '';
+    dialogButtons.innerHTML = '';
 
-      const msgEl = document.createElement('div');
-      msgEl.textContent = message;
-      msgEl.style.marginBottom = '10px';
-      dialogMessage.appendChild(msgEl);
+    const msgEl = document.createElement('div');
+    msgEl.textContent = message;
+    msgEl.style.marginBottom = '10px';
+    dialogMessage.appendChild(msgEl);
 
-      const inputField = document.createElement('input');
-      inputField.type = 'text';
-      inputField.value = defaultValue || '';
-      inputField.style.width = '100%';
-      inputField.style.padding = '8px';
-      inputField.style.border = '1px solid #555';
-      inputField.style.borderRadius = '4px';
-      inputField.style.background = '#2a2a2a';
-      inputField.style.color = '#fff';
-      inputField.style.marginBottom = '15px';
-      dialogMessage.appendChild(inputField);
+    const inputField = document.createElement('input');
+    inputField.type = 'text';
+    inputField.value = defaultValue || '';
+    inputField.style.width = '100%';
+    inputField.style.padding = '8px';
+    inputField.style.border = '1px solid #555';
+    inputField.style.borderRadius = '4px';
+    inputField.style.background = '#2a2a2a';
+    inputField.style.color = '#fff';
+    inputField.style.marginBottom = '15px';
+    dialogMessage.appendChild(inputField);
 
-      const okBtn = document.createElement('button');
-      okBtn.className = 'dialog-button';
-      okBtn.textContent = 'OK';
-      okBtn.onclick = () => {
-        closeDialog();
-        if (callback) callback(inputField.value);
-      };
-      dialogButtons.appendChild(okBtn);
+    const okBtn = document.createElement('button');
+    okBtn.className = 'dialog-button';
+    okBtn.textContent = 'OK';
+    okBtn.onclick = () => {
+      closeDialog();
+      if (callback) callback(inputField.value);
+    };
+    dialogButtons.appendChild(okBtn);
 
-      const cancelBtn = document.createElement('button');
-      cancelBtn.className = 'dialog-button';
-      cancelBtn.textContent = 'Cancel';
-      cancelBtn.onclick = () => {
-        closeDialog();
-        if (callback) callback(null);
-      };
-      dialogButtons.appendChild(cancelBtn);
+    const cancelBtn = document.createElement('button');
+    cancelBtn.className = 'dialog-button';
+    cancelBtn.textContent = 'Cancel';
+    cancelBtn.onclick = () => {
+      closeDialog();
+      if (callback) callback(null);
+    };
+    dialogButtons.appendChild(cancelBtn);
 
-      dialogModal.classList.add('show');
-    }
-    function closeDialog() {
-      document.getElementById('dialogModal').classList.remove('show');
-    }
-    function showAlert(message, callback) {
-      const dialogModal = document.getElementById('dialogModal');
-      const dialogMessage = document.getElementById('dialogMessage');
-      const dialogButtons = document.getElementById('dialogButtons');
+    dialogModal.classList.add('show');
+  }
+  function closeDialog() {
+    document.getElementById('dialogModal').classList.remove('show');
+  }
+  function showAlert(message, callback) {
+    const dialogModal = document.getElementById('dialogModal');
+    const dialogMessage = document.getElementById('dialogMessage');
+    const dialogButtons = document.getElementById('dialogButtons');
 
-      dialogMessage.textContent = message;
-      dialogButtons.innerHTML = '';
+    dialogMessage.textContent = message;
+    dialogButtons.innerHTML = '';
 
-      const okBtn = document.createElement('button');
-      okBtn.className = 'dialog-button';
-      okBtn.textContent = 'OK';
-      okBtn.onclick = () => {
-        closeDialog();
-        if (callback) callback();
-      };
-      dialogButtons.appendChild(okBtn);
+    const okBtn = document.createElement('button');
+    okBtn.className = 'dialog-button';
+    okBtn.textContent = 'OK';
+    okBtn.onclick = () => {
+      closeDialog();
+      if (callback) callback();
+    };
+    dialogButtons.appendChild(okBtn);
 
-      dialogModal.classList.add('show');
-    }
-    function showConfirm(message, onYes, onNo) {
-      const dialogModal = document.getElementById('dialogModal');
-      const dialogMessage = document.getElementById('dialogMessage');
-      const dialogButtons = document.getElementById('dialogButtons');
+    dialogModal.classList.add('show');
+  }
+  function showConfirm(message, onYes, onNo) {
+    const dialogModal = document.getElementById('dialogModal');
+    const dialogMessage = document.getElementById('dialogMessage');
+    const dialogButtons = document.getElementById('dialogButtons');
 
-      dialogMessage.textContent = message;
-      dialogButtons.innerHTML = '';
+    dialogMessage.textContent = message;
+    dialogButtons.innerHTML = '';
 
-      const yesBtn = document.createElement('button');
-      yesBtn.className = 'dialog-button';
-      yesBtn.textContent = 'Yes';
-      yesBtn.onclick = () => {
-        closeDialog();
-        if (onYes) onYes();
-      };
-      dialogButtons.appendChild(yesBtn);
+    const yesBtn = document.createElement('button');
+    yesBtn.className = 'dialog-button';
+    yesBtn.textContent = 'Yes';
+    yesBtn.onclick = () => {
+      closeDialog();
+      if (onYes) onYes();
+    };
+    dialogButtons.appendChild(yesBtn);
 
-      const noBtn = document.createElement('button');
-      noBtn.className = 'dialog-button';
-      noBtn.textContent = 'No';
-      noBtn.onclick = () => {
-        closeDialog();
-        if (onNo) onNo();
-      };
-      dialogButtons.appendChild(noBtn);
+    const noBtn = document.createElement('button');
+    noBtn.className = 'dialog-button';
+    noBtn.textContent = 'No';
+    noBtn.onclick = () => {
+      closeDialog();
+      if (onNo) onNo();
+    };
+    dialogButtons.appendChild(noBtn);
 
-      dialogModal.classList.add('show');
-    }
+    dialogModal.classList.add('show');
+  }
 
-    function createFolder() {
-      showPrompt("Enter new folder name:", "", function(folderName) {
-        if (folderName && folderName.trim() !== "") {
-          let form = document.createElement('form');
-          form.method = 'POST';
-          form.action = 'explorer.php?folder=<?php echo urlencode($currentRel); ?>';
-          let inputCreate = document.createElement('input');
-          inputCreate.type = 'hidden';
-          inputCreate.name = 'create_folder';
-          inputCreate.value = '1';
-          form.appendChild(inputCreate);
-          let inputName = document.createElement('input');
-          inputName.type = 'hidden';
-          inputName.name = 'folder_name';
-          inputName.value = folderName.trim();
-          form.appendChild(inputName);
-          document.body.appendChild(form);
-          form.submit();
-        }
-      });
-    }
-
-    document.getElementById('btnRenameFolder').addEventListener('click', function() {
-      if (!selectedFolder) return;
-      showPrompt("Enter new folder name:", selectedFolder, function(newName) {
-        if (newName && newName.trim() !== "" && newName !== selectedFolder) {
-          let form = document.createElement('form');
-          form.method = 'POST';
-          form.action = 'explorer.php?folder=<?php echo urlencode($currentRel); ?>';
-          let inputAction = document.createElement('input');
-          inputAction.type = 'hidden';
-          inputAction.name = 'rename_folder';
-          inputAction.value = '1';
-          form.appendChild(inputAction);
-          let inputOld = document.createElement('input');
-          inputOld.type = 'hidden';
-          inputOld.name = 'old_folder_name';
-          inputOld.value = selectedFolder;
-          form.appendChild(inputOld);
-          let inputNew = document.createElement('input');
-          inputNew.type = 'hidden';
-          inputNew.name = 'new_folder_name';
-          inputNew.value = newName.trim();
-          form.appendChild(inputNew);
-          document.body.appendChild(form);
-          form.submit();
-        }
-      });
-    });
-
-    document.getElementById('btnDeleteFolder').addEventListener('click', function() {
-      if (!selectedFolder) return;
-      showConfirm(`Delete folder "${selectedFolder}"?`, () => {
+  function createFolder() {
+    showPrompt("Enter new folder name:", "", function(folderName) {
+      if (folderName && folderName.trim() !== "") {
         let form = document.createElement('form');
         form.method = 'POST';
-        form.action = 'explorer.php?folder=<?php echo urlencode($currentRel); ?>&delete=' + encodeURIComponent(selectedFolder);
+        form.action = 'explorer.php?folder=<?php echo urlencode($currentRel); ?>';
+        let inputCreate = document.createElement('input');
+        inputCreate.type = 'hidden';
+        inputCreate.name = 'create_folder';
+        inputCreate.value = '1';
+        form.appendChild(inputCreate);
+        let inputName = document.createElement('input');
+        inputName.type = 'hidden';
+        inputName.name = 'folder_name';
+        inputName.value = folderName.trim();
+        form.appendChild(inputName);
         document.body.appendChild(form);
         form.submit();
-      });
-    });
-
-    function renameFilePrompt(fileName) {
-      let dotIndex = fileName.lastIndexOf(".");
-      let baseName = fileName;
-      let ext = "";
-      if(dotIndex > 0) {
-        baseName = fileName.substring(0, dotIndex);
-        ext = fileName.substring(dotIndex);
       }
-      showPrompt("Enter new file name:", baseName, function(newBase) {
-        if (newBase && newBase.trim() !== "" && newBase.trim() !== baseName) {
-          let finalName = newBase.trim() + ext;
-          let form = document.createElement('form');
-          form.method = 'POST';
-          form.action = 'explorer.php?folder=<?php echo urlencode($currentRel); ?>';
-          let inputAction = document.createElement('input');
-          inputAction.type = 'hidden';
-          inputAction.name = 'rename_file';
-          inputAction.value = '1';
-          form.appendChild(inputAction);
-          let inputOld = document.createElement('input');
-          inputOld.type = 'hidden';
-          inputOld.name = 'old_file_name';
-          inputOld.value = fileName;
-          form.appendChild(inputOld);
-          let inputNew = document.createElement('input');
-          inputNew.type = 'hidden';
-          inputNew.name = 'new_file_name';
-          inputNew.value = finalName;
-          form.appendChild(inputNew);
-          document.body.appendChild(form);
-          form.submit();
-        }
-      });
-    }
+    });
+  }
 
-    function confirmFileDelete(fileName) {
-      showConfirm(`Delete file "${fileName}"?`, () => {
+  document.getElementById('btnRenameFolder').addEventListener('click', function() {
+    if (!selectedFolder) return;
+    showPrompt("Enter new folder name:", selectedFolder, function(newName) {
+      if (newName && newName.trim() !== "" && newName !== selectedFolder) {
         let form = document.createElement('form');
         form.method = 'POST';
-        form.action = 'explorer.php?folder=<?php echo urlencode($currentRel); ?>&delete=' + encodeURIComponent(fileName);
+        form.action = 'explorer.php?folder=<?php echo urlencode($currentRel); ?>';
+        let inputAction = document.createElement('input');
+        inputAction.type = 'hidden';
+        inputAction.name = 'rename_folder';
+        inputAction.value = '1';
+        form.appendChild(inputAction);
+        let inputOld = document.createElement('input');
+        inputOld.type = 'hidden';
+        inputOld.name = 'old_folder_name';
+        inputOld.value = selectedFolder;
+        form.appendChild(inputOld);
+        let inputNew = document.createElement('input');
+        inputNew.type = 'hidden';
+        inputNew.name = 'new_folder_name';
+        inputNew.value = newName.trim();
+        form.appendChild(inputNew);
         document.body.appendChild(form);
         form.submit();
-      });
-    }
-
-    function downloadFile(fileURL) {
-      console.log("Downloading: " + fileURL);
-      window.location.href = fileURL; // Direct redirect to trigger download
-    }
-
-    const uploadForm = document.getElementById('uploadForm');
-    const fileInput = document.getElementById('fileInput');
-    const uploadBtn = document.getElementById('uploadBtn');
-    const uploadProgressContainer = document.getElementById('uploadProgressContainer');
-    const uploadProgressBar = document.getElementById('uploadProgressBar');
-    const uploadProgressPercent = document.getElementById('uploadProgressPercent');
-    const cancelUploadBtn = document.getElementById('cancelUploadBtn');
-
-    uploadBtn.addEventListener('click', () => {
-      fileInput.click();
-    });
-    fileInput.addEventListener('change', () => {
-      if (!fileInput.files.length) return;
-      startUpload(fileInput.files);
-    });
-    function startUpload(fileList) {
-      const formData = new FormData(uploadForm);
-      formData.delete("upload_files[]");
-      for (let i = 0; i < fileList.length; i++) {
-        formData.append("upload_files[]", fileList[i]);
-      }
-      uploadProgressContainer.style.display = 'block';
-      uploadProgressBar.style.width = '0%';
-      uploadProgressPercent.textContent = '0%';
-      const xhr = new XMLHttpRequest();
-      currentXhr = xhr;
-      xhr.open('POST', uploadForm.action, true);
-      xhr.upload.onprogress = (e) => {
-        if (e.lengthComputable) {
-          let percent = Math.round((e.loaded / e.total) * 100);
-          uploadProgressBar.style.width = percent + '%';
-          uploadProgressPercent.textContent = percent + '%';
-        }
-      };
-      xhr.onload = function() {
-        if (xhr.status === 200) {
-          location.reload();
-        } else {
-          showAlert('Upload failed. Status: ' + xhr.status);
-        }
-      };
-      xhr.onerror = function() {
-        showAlert('Upload failed. Could not connect to server.');
-      };
-      xhr.send(formData);
-    }
-    cancelUploadBtn.addEventListener('click', () => {
-      if (currentXhr) {
-        currentXhr.abort();
-        uploadProgressContainer.style.display = 'none';
-        fileInput.value = "";
-        showAlert('Upload canceled.');
       }
     });
+  });
 
-    function openPreviewModal(fileURL, fileName) {
-      console.log("Previewing: " + fileURL);
-      const previewContainer = document.getElementById('previewContainer');
-      previewContainer.innerHTML = '';
-      let lowerName = fileName.toLowerCase();
-      if (lowerName.match(/\.(png|jpe?g|gif|heic)$/)) {
-        let img = document.createElement('img');
-        img.src = fileURL;
-        img.onerror = () => console.log("Image failed to load: " + fileURL);
-        img.onload = () => console.log("Image loaded: " + fileURL);
-        previewContainer.appendChild(img);
-      } else if (lowerName.match(/\.(mp4|webm|mov|avi|mkv)$/)) {
-        let video = document.createElement('video');
-        video.src = fileURL;
-        video.controls = true;
-        video.autoplay = true;
-        video.onerror = () => console.log("Video failed to load: " + fileURL);
-        video.onload = () => console.log("Video loaded: " + fileURL);
-        previewContainer.appendChild(video);
+  document.getElementById('btnDeleteFolder').addEventListener('click', function() {
+    if (!selectedFolder) return;
+    showConfirm(`Delete folder "${selectedFolder}"?`, () => {
+      let form = document.createElement('form');
+      form.method = 'POST';
+      form.action = 'explorer.php?folder=<?php echo urlencode($currentRel); ?>&delete=' + encodeURIComponent(selectedFolder);
+      document.body.appendChild(form);
+      form.submit();
+    });
+  });
+
+  function renameFilePrompt(fileName) {
+    let dotIndex = fileName.lastIndexOf(".");
+    let baseName = fileName;
+    let ext = "";
+    if(dotIndex > 0) {
+      baseName = fileName.substring(0, dotIndex);
+      ext = fileName.substring(dotIndex);
+    }
+    showPrompt("Enter new file name:", baseName, function(newBase) {
+      if (newBase && newBase.trim() !== "" && newBase.trim() !== baseName) {
+        let finalName = newBase.trim() + ext;
+        let form = document.createElement('form');
+        form.method = 'POST';
+        form.action = 'explorer.php?folder=<?php echo urlencode($currentRel); ?>';
+        let inputAction = document.createElement('input');
+        inputAction.type = 'hidden';
+        inputAction.name = 'rename_file';
+        inputAction.value = '1';
+        form.appendChild(inputAction);
+        let inputOld = document.createElement('input');
+        inputOld.type = 'hidden';
+        inputOld.name = 'old_file_name';
+        inputOld.value = fileName;
+        form.appendChild(inputOld);
+        let inputNew = document.createElement('input');
+        inputNew.type = 'hidden';
+        inputNew.name = 'new_file_name';
+        inputNew.value = finalName;
+        form.appendChild(inputNew);
+        document.body.appendChild(form);
+        form.submit();
+      }
+    });
+  }
+
+  function confirmFileDelete(fileName) {
+    showConfirm(`Delete file "${fileName}"?`, () => {
+      let form = document.createElement('form');
+      form.method = 'POST';
+      form.action = 'explorer.php?folder=<?php echo urlencode($currentRel); ?>&delete=' + encodeURIComponent(fileName);
+      document.body.appendChild(form);
+      form.submit();
+    });
+  }
+
+  function downloadFile(fileURL) {
+    console.log("Downloading: " + fileURL);
+    window.location.href = fileURL; // Direct redirect to trigger download
+  }
+
+  const uploadForm = document.getElementById('uploadForm');
+  const fileInput = document.getElementById('fileInput');
+  const uploadBtn = document.getElementById('uploadBtn');
+  const uploadProgressContainer = document.getElementById('uploadProgressContainer');
+  const uploadProgressBar = document.getElementById('uploadProgressBar');
+  const uploadProgressPercent = document.getElementById('uploadProgressPercent');
+  const cancelUploadBtn = document.getElementById('cancelUploadBtn');
+
+  uploadBtn.addEventListener('click', () => {
+    fileInput.click();
+  });
+  fileInput.addEventListener('change', () => {
+    if (!fileInput.files.length) return;
+    startUpload(fileInput.files);
+  });
+  function startUpload(fileList) {
+    const formData = new FormData(uploadForm);
+    formData.delete("upload_files[]");
+    for (let i = 0; i < fileList.length; i++) {
+      formData.append("upload_files[]", fileList[i]);
+    }
+    uploadProgressContainer.style.display = 'block';
+    uploadProgressBar.style.width = '0%';
+    uploadProgressPercent.textContent = '0%';
+    const xhr = new XMLHttpRequest();
+    currentXhr = xhr;
+    xhr.open('POST', uploadForm.action, true);
+    xhr.upload.onprogress = (e) => {
+      if (e.lengthComputable) {
+        let percent = Math.round((e.loaded / e.total) * 100);
+        uploadProgressBar.style.width = percent + '%';
+        uploadProgressPercent.textContent = percent + '%';
+      }
+    };
+    xhr.onload = function() {
+      if (xhr.status === 200) {
+        location.reload();
       } else {
-        downloadFile(fileURL);
-        return;
+        showAlert('Upload failed. Status: ' + xhr.status);
       }
-      document.getElementById('previewModal').style.display = 'flex';
+    };
+    xhr.onerror = function() {
+      showAlert('Upload failed. Could not connect to server.');
+    };
+    xhr.send(formData);
+  }
+  cancelUploadBtn.addEventListener('click', () => {
+    if (currentXhr) {
+      currentXhr.abort();
+      uploadProgressContainer.style.display = 'none';
+      fileInput.value = "";
+      showAlert('Upload canceled.');
     }
-    window.openPreviewModal = openPreviewModal;
-    function closePreviewModal() {
-      document.getElementById('previewModal').style.display = 'none';
-      document.getElementById('previewContainer').innerHTML = '';
+  });
+
+  function openPreviewModal(fileURL, fileName) {
+    console.log("Previewing: " + fileURL);
+    const previewContainer = document.getElementById('previewContainer');
+    previewContainer.innerHTML = '';
+    let lowerName = fileName.toLowerCase();
+    if (lowerName.match(/\.(png|jpe?g|gif|heic)$/)) {
+      let img = document.createElement('img');
+      img.src = fileURL;
+      img.onerror = () => console.log("Image failed to load: " + fileURL);
+      img.onload = () => console.log("Image loaded: " + fileURL);
+      previewContainer.appendChild(img);
+    } else if (lowerName.match(/\.(mp4|webm|mov|avi|mkv)$/)) {
+      let video = document.createElement('video');
+      video.src = fileURL;
+      video.controls = true;
+      video.autoplay = true;
+      video.onerror = () => console.log("Video failed to load: " + fileURL);
+      video.onload = () => console.log("Video loaded: " + fileURL);
+      previewContainer.appendChild(video);
+    } else {
+      downloadFile(fileURL);
+      return;
     }
-    window.closePreviewModal = closePreviewModal;
-  </script>
+    document.getElementById('previewModal').style.display = 'flex';
+  }
+  window.openPreviewModal = openPreviewModal;
+  function closePreviewModal() {
+    document.getElementById('previewModal').style.display = 'none';
+    document.getElementById('previewContainer').innerHTML = '';
+  }
+  window.closePreviewModal = closePreviewModal;
+
+  // Theme toggle functionality
+  const themeToggleBtn = document.getElementById('themeToggleBtn');
+  const body = document.body;
+
+  // Load saved theme from localStorage
+  const savedTheme = localStorage.getItem('theme') || 'dark';
+  if (savedTheme === 'light') {
+    body.classList.add('light-mode');
+    themeToggleBtn.querySelector('i').classList.replace('fa-moon', 'fa-sun');
+  } else {
+    body.classList.remove('light-mode');
+    themeToggleBtn.querySelector('i').classList.replace('fa-sun', 'fa-moon');
+  }
+
+  themeToggleBtn.addEventListener('click', () => {
+    body.classList.toggle('light-mode');
+    const isLightMode = body.classList.contains('light-mode');
+    themeToggleBtn.querySelector('i').classList.toggle('fa-moon', !isLightMode);
+    themeToggleBtn.querySelector('i').classList.toggle('fa-sun', isLightMode);
+    localStorage.setItem('theme', isLightMode ? 'light' : 'dark');
+  });
+</script>
 </body>
 </html>
