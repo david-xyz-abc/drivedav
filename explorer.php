@@ -1,14 +1,15 @@
 <?php
 session_start();
 
-// Debug output
-file_put_contents('/tmp/explorer_debug.log', "Explorer: Session ID: " . session_id() . "\n", FILE_APPEND);
-file_put_contents('/tmp/explorer_debug.log', "Explorer: Loggedin: " . (isset($_SESSION['loggedin']) ? var_export($_SESSION['loggedin'], true) : "Not set") . "\n", FILE_APPEND);
-file_put_contents('/tmp/explorer_debug.log', "Explorer: Full session: " . var_export($_SESSION, true) . "\n", FILE_APPEND);
+// Debug log setup
+$debug_log = '/tmp/explorer_debug.log';
+file_put_contents($debug_log, "=== New Request ===\n", FILE_APPEND);
+file_put_contents($debug_log, "Session ID: " . session_id() . "\n", FILE_APPEND);
+file_put_contents($debug_log, "Loggedin: " . (isset($_SESSION['loggedin']) ? var_export($_SESSION['loggedin'], true) : "Not set") . "\n", FILE_APPEND);
 
 // Check if user is logged in
 if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
-    file_put_contents('/tmp/explorer_debug.log', "Explorer: Redirecting to index.php due to no login\n", FILE_APPEND);
+    file_put_contents($debug_log, "Redirecting to index.php due to no login\n", FILE_APPEND);
     header("Location: index.php");
     exit;
 }
@@ -18,12 +19,13 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
  ************************************************/
 $homeDirPath = "/var/www/html/webdav/Home";
 if (!is_dir($homeDirPath)) {
-    mkdir($homeDirPath, 0777, true); // Using 0777 per your preference
+    mkdir($homeDirPath, 0777, true);
 }
 $baseDir = realpath($homeDirPath);
 
 // Redirect to Home folder by default if no folder specified
 if (!isset($_GET['folder'])) {
+    file_put_contents($debug_log, "No folder specified, redirecting to Home\n", FILE_APPEND);
     header("Location: explorer.php?folder=Home");
     exit;
 }
@@ -33,9 +35,12 @@ if (!isset($_GET['folder'])) {
  ************************************************/
 $currentRel = isset($_GET['folder']) ? $_GET['folder'] : 'Home';
 $currentRel = trim(str_replace('..', '', $currentRel), '/');
-
 $currentDir = realpath($baseDir . '/' . $currentRel);
+file_put_contents($debug_log, "CurrentRel: $currentRel\n", FILE_APPEND);
+file_put_contents($debug_log, "CurrentDir: $currentDir\n", FILE_APPEND);
+
 if ($currentDir === false || strpos($currentDir, $baseDir) !== 0) {
+    file_put_contents($debug_log, "Invalid folder, resetting to Home\n", FILE_APPEND);
     $currentDir = $baseDir;
     $currentRel = 'Home';
 }
@@ -49,6 +54,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_folder'])) {
         $targetPath = $currentDir . '/' . $folderName;
         if (!file_exists($targetPath)) {
             mkdir($targetPath, 0777);
+            file_put_contents($debug_log, "Created folder: $targetPath\n", FILE_APPEND);
         }
     }
     header("Location: explorer.php?folder=" . urlencode($currentRel));
@@ -64,6 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_FILES['upload_files'])) {
             $tmpPath = $_FILES['upload_files']['tmp_name'][$i];
             $dest = $currentDir . '/' . basename($fname);
             move_uploaded_file($tmpPath, $dest);
+            file_put_contents($debug_log, "Uploaded file: $dest\n", FILE_APPEND);
         }
     }
     header("Location: explorer.php?folder=" . urlencode($currentRel));
@@ -80,8 +87,10 @@ if (isset($_GET['delete']) && $_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($targetPath && strpos($targetPath, $currentDir) === 0) {
         if (is_dir($targetPath)) {
             deleteRecursive($targetPath);
+            file_put_contents($debug_log, "Deleted folder: $targetPath\n", FILE_APPEND);
         } else {
             unlink($targetPath);
+            file_put_contents($debug_log, "Deleted file: $targetPath\n", FILE_APPEND);
         }
     }
     header("Location: explorer.php?folder=" . urlencode($currentRel));
@@ -117,6 +126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rename_folder'])) {
         $newPath = $currentDir . '/' . $newFolderName;
         if (!file_exists($newPath)) {
             rename($oldPath, $newPath);
+            file_put_contents($debug_log, "Renamed folder: $oldPath to $newPath\n", FILE_APPEND);
         }
     }
     header("Location: explorer.php?folder=" . urlencode($currentRel));
@@ -142,6 +152,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['rename_file'])) {
         $newFilePath = $currentDir . '/' . $newFileName;
         if (!file_exists($newFilePath)) {
             rename($oldFilePath, $newFilePath);
+            file_put_contents($debug_log, "Renamed file: $oldFilePath to $newFilePath\n", FILE_APPEND);
         }
     }
     header("Location: explorer.php?folder=" . urlencode($currentRel));
@@ -167,6 +178,8 @@ if (is_dir($currentDir)) {
 }
 sort($folders);
 sort($files);
+file_put_contents($debug_log, "Folders: " . implode(", ", $folders) . "\n", FILE_APPEND);
+file_put_contents($debug_log, "Files: " . implode(", ", $files) . "\n", FILE_APPEND);
 
 /************************************************
  * 10. "Back" link if not at Home
@@ -217,239 +230,73 @@ function isVideo($fileName) {
   <meta charset="UTF-8">
   <title>Explorer with Previews</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <!-- Poppins & Font Awesome -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600&display=swap" rel="stylesheet">
   <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet"/>
   <style>
-    /* Base styles */
-    html, body {
-      margin: 0; padding: 0;
-      width: 100%; height: 100%;
-      background: #121212;
-      color: #fff;
-      font-family: 'Poppins', sans-serif;
-      overflow: hidden;
-    }
-    .app-container {
-      display: flex;
-      width: 100%; height: 100%;
-      position: relative;
-    }
-    /* SIDEBAR */
-    .sidebar {
-      width: 270px;
-      background: linear-gradient(135deg, #1e1e1e, #2a2a2a);
-      border-right: 1px solid #333;
-      display: flex; flex-direction: column;
-      z-index: 9998;
-      position: sticky; top: 0; height: 100vh;
-      transform: translateX(-100%);
-      transition: transform 0.3s ease;
-    }
-    @media (min-width: 1024px) {
-      .sidebar { transform: none; }
-    }
+    html, body { margin: 0; padding: 0; width: 100%; height: 100%; background: #121212; color: #fff; font-family: 'Poppins', sans-serif; overflow: hidden; }
+    .app-container { display: flex; width: 100%; height: 100%; position: relative; }
+    .sidebar { width: 270px; background: linear-gradient(135deg, #1e1e1e, #2a2a2a); border-right: 1px solid #333; display: flex; flex-direction: column; z-index: 9998; position: sticky; top: 0; height: 100vh; transform: translateX(-100%); transition: transform 0.3s ease; }
+    @media (min-width: 1024px) { .sidebar { transform: none; } }
     .sidebar.open { transform: translateX(0); }
-    @media (max-width: 1023px) {
-      .sidebar { position: fixed; top: 0; left: 0; height: 100%; }
-    }
-    .sidebar-overlay {
-      display: none; position: fixed; top: 0; left: 0;
-      width: 100%; height: 100%; background: rgba(0,0,0,0.5);
-      z-index: 9997;
-    }
+    @media (max-width: 1023px) { .sidebar { position: fixed; top: 0; left: 0; height: 100%; } }
+    .sidebar-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 9997; }
     .sidebar-overlay.show { display: block; }
-    @media (min-width: 1024px) {
-      .sidebar-overlay { display: none !important; }
-    }
-    .folders-container {
-      padding: 20px; overflow-y: auto; flex: 1;
-    }
-    /* TOP ROW */
-    .top-row {
-      display: flex; align-items: center; gap: 10px;
-      margin-bottom: 15px; justify-content: flex-start;
-    }
-    .top-row h2 {
-      font-size: 18px; font-weight: 500; margin: 0;
-    }
-    /* GRADIENT BUTTONS */
-    .btn {
-      background: linear-gradient(135deg, #555, #777);
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      cursor: pointer;
-      transition: background 0.3s, transform 0.2s;
-      width: 36px; height: 36px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 16px;
-      text-decoration: none;
-    }
-    .btn:hover {
-      background: linear-gradient(135deg, #777, #555);
-      transform: scale(1.05);
-    }
+    @media (min-width: 1024px) { .sidebar-overlay { display: none !important; } }
+    .folders-container { padding: 20px; overflow-y: auto; flex: 1; }
+    .top-row { display: flex; align-items: center; gap: 10px; margin-bottom: 15px; justify-content: flex-start; }
+    .top-row h2 { font-size: 18px; font-weight: 500; margin: 0; }
+    .btn { background: linear-gradient(135deg, #555, #777); color: #fff; border: none; border-radius: 4px; cursor: pointer; transition: background 0.3s, transform 0.2s; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; font-size: 16px; text-decoration: none; }
+    .btn:hover { background: linear-gradient(135deg, #777, #555); transform: scale(1.05); }
     .btn:active { transform: scale(0.95); }
     .btn i { color: #fff; margin: 0; }
-    .btn-back {
-      background: linear-gradient(135deg, #555, #777);
-      color: #fff;
-      border: none;
-      border-radius: 4px;
-      width: 36px; height: 36px;
-      display: flex; align-items: center; justify-content: center;
-      transition: background 0.3s, transform 0.2s;
-      text-decoration: none;
-    }
+    .btn-back { background: linear-gradient(135deg, #555, #777); color: #fff; border: none; border-radius: 4px; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; transition: background 0.3s, transform 0.2s; text-decoration: none; }
     .btn-back i { color: #fff; margin: 0; }
     .btn-back:hover { background: linear-gradient(135deg, #777, #555); transform: scale(1.05); }
     .btn-back:active { transform: scale(0.95); }
-    /* Logout button: red gradient */
-    .logout-btn {
-      background: linear-gradient(135deg, #b71c1c, #f44336) !important;
-    }
-    .logout-btn:hover {
-      background: linear-gradient(135deg, #f44336, #b71c1c) !important;
-    }
+    .logout-btn { background: linear-gradient(135deg, #b71c1c, #f44336) !important; }
+    .logout-btn:hover { background: linear-gradient(135deg, #f44336, #b71c1c) !important; }
     .folder-list { list-style: none; margin: 0; padding: 0; }
-    .folder-item {
-      padding: 8px 10px; margin-bottom: 5px;
-      border-radius: 4px; background: #2a2a2a;
-      cursor: pointer; transition: background 0.3s;
-    }
+    .folder-item { padding: 8px 10px; margin-bottom: 5px; border-radius: 4px; background: #2a2a2a; cursor: pointer; transition: background 0.3s; }
     .folder-item:hover { background: #333; }
     .folder-item.selected { background: #444; transform: translateX(5px); }
     .folder-item i { margin-right: 6px; }
-    /* MAIN CONTENT */
-    .main-content {
-      flex: 1; display: flex; flex-direction: column; overflow: hidden;
-    }
-    .header-area {
-      flex-shrink: 0; display: flex; align-items: center;
-      justify-content: space-between; padding: 20px;
-      border-bottom: 1px solid #333;
-    }
+    .main-content { flex: 1; display: flex; flex-direction: column; overflow: hidden; }
+    .header-area { flex-shrink: 0; display: flex; align-items: center; justify-content: space-between; padding: 20px; border-bottom: 1px solid #333; }
     .header-title { display: flex; align-items: center; gap: 10px; }
     .header-area h1 { font-size: 18px; font-weight: 500; margin: 0; }
-    .hamburger {
-      background: none; border: none; color: #fff;
-      font-size: 24px; cursor: pointer;
-    }
+    .hamburger { background: none; border: none; color: #fff; font-size: 24px; cursor: pointer; }
     @media (min-width: 1024px) { .hamburger { display: none; } }
     .content-inner { flex: 1; overflow-y: auto; padding: 20px; }
-    /* FILE LIST */
-    .file-list {
-      display: flex; flex-direction: column; gap: 8px;
-    }
-    .file-row {
-      display: flex; align-items: center;
-      padding: 8px; background: #1e1e1e;
-      border: 1px solid #333; border-radius: 4px;
-      transition: box-shadow 0.3s ease, transform 0.2s;
-      position: relative;
-    }
-    .file-row:hover {
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-      transform: translateX(5px);
-    }
+    .file-list { display: flex; flex-direction: column; gap: 8px; }
+    .file-row { display: flex; align-items: center; padding: 8px; background: #1e1e1e; border: 1px solid #333; border-radius: 4px; transition: box-shadow 0.3s ease, transform 0.2s; position: relative; }
+    .file-row:hover { box-shadow: 0 4px 8px rgba(0,0,0,0.3); transform: translateX(5px); }
     .file-icon { font-size: 20px; margin-right: 10px; flex-shrink: 0; }
-    .file-name {
-      flex: 1; white-space: nowrap; overflow: hidden;
-      text-overflow: ellipsis; margin-right: 20px; cursor: pointer;
-    }
-    .file-actions {
-      display: flex; align-items: center; gap: 6px;
-    }
-    .file-actions button {
-      background: linear-gradient(135deg, #555, #777);
-      border-radius: 4px; color: #fff; border: none;
-      font-size: 14px; transition: background 0.3s, transform 0.2s;
-      cursor: pointer; width: 36px; height: 36px;
-      display: flex; align-items: center; justify-content: center;
-    }
-    .file-actions button:hover {
-      background: linear-gradient(135deg, #777, #555);
-      transform: scale(1.05);
-    }
+    .file-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-right: 20px; cursor: pointer; }
+    .file-actions { display: flex; align-items: center; gap: 6px; }
+    .file-actions button { background: linear-gradient(135deg, #555, #777); border-radius: 4px; color: #fff; border: none; font-size: 14px; transition: background 0.3s, transform 0.2s; cursor: pointer; width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; }
+    .file-actions button:hover { background: linear-gradient(135deg, #777, #555); transform: scale(1.05); }
     .file-actions button:active { transform: scale(0.95); }
     .file-actions button i { color: #fff; margin: 0; }
-    /* Hide the file input */
     #fileInput { display: none; }
-    /* UPLOAD PROGRESS */
-    #uploadProgressContainer {
-      display: none; position: fixed; bottom: 20px; right: 20px;
-      width: 300px; background: #1e1e1e; border: 1px solid #333;
-      padding: 10px; border-radius: 4px; z-index: 9999;
-    }
-    #uploadProgressBar {
-      height: 20px; width: 0%;
-      background: linear-gradient(135deg, #555, #777);
-      border-radius: 4px; transition: width 0.1s ease;
-    }
-    #uploadProgressPercent {
-      text-align: center; margin-top: 5px; font-weight: 500;
-    }
-    .cancel-upload-btn {
-      margin-top: 5px; padding: 6px 10px;
-      background: #f44336; border: none; border-radius: 4px;
-      cursor: pointer; transition: background 0.3s, transform 0.2s;
-    }
-    .cancel-upload-btn:hover {
-      background: #d32f2f; transform: scale(1.05);
-    }
-    /* PREVIEW MODAL */
-    #previewModal {
-      display: none; position: fixed; top: 0; left: 0;
-      width: 100%; height: 100%; background: rgba(0,0,0,0.8);
-      justify-content: center; align-items: center; z-index: 9998;
-    }
-    #previewContent {
-      position: relative; width: 100%; height: 100%;
-      background: transparent;
-      display: flex; align-items: center; justify-content: center;
-    }
-    #previewClose {
-      position: absolute; top: 20px; right: 20px;
-      cursor: pointer; font-size: 30px; color: #fff; z-index: 9999;
-    }
-    #previewContainer {
-      width: 100%; height: 100%;
-      display: flex; align-items: center; justify-content: center;
-      overflow: hidden;
-    }
-    #previewContainer img, #previewContainer video {
-      max-width: 100%;
-      max-height: 100%;
-      object-fit: contain;
-      display: block;
-    }
-    /* DIALOG MODAL */
-    #dialogModal {
-      display: none; position: fixed; top: 0; left: 0;
-      width: 100%; height: 100%; background: rgba(0,0,0,0.8);
-      justify-content: center; align-items: center; z-index: 10000;
-    }
+    #uploadProgressContainer { display: none; position: fixed; bottom: 20px; right: 20px; width: 300px; background: #1e1e1e; border: 1px solid #333; padding: 10px; border-radius: 4px; z-index: 9999; }
+    #uploadProgressBar { height: 20px; width: 0%; background: linear-gradient(135deg, #555, #777); border-radius: 4px; transition: width 0.1s ease; }
+    #uploadProgressPercent { text-align: center; margin-top: 5px; font-weight: 500; }
+    .cancel-upload-btn { margin-top: 5px; padding: 6px 10px; background: #f44336; border: none; border-radius: 4px; cursor: pointer; transition: background 0.3s, transform 0.2s; }
+    .cancel-upload-btn:hover { background: #d32f2f; transform: scale(1.05); }
+    #previewModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 9998; }
+    #previewContent { position: relative; width: 100%; height: 100%; background: transparent; display: flex; align-items: center; justify-content: center; }
+    #previewClose { position: absolute; top: 20px; right: 20px; cursor: pointer; font-size: 30px; color: #fff; z-index: 9999; }
+    #previewContainer { width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+    #previewContainer img, #previewContainer video { max-width: 100%; max-height: 100%; object-fit: contain; display: block; }
+    #dialogModal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); justify-content: center; align-items: center; z-index: 10000; }
     #dialogModal.show { display: flex; }
-    .dialog-content {
-      background: #1e1e1e; border: 1px solid #333;
-      border-radius: 8px; padding: 20px;
-      max-width: 90%; width: 400px; text-align: center;
-    }
+    .dialog-content { background: #1e1e1e; border: 1px solid #333; border-radius: 8px; padding: 20px; max-width: 90%; width: 400px; text-align: center; }
     .dialog-message { margin-bottom: 20px; font-size: 16px; }
     .dialog-buttons { display: flex; justify-content: center; gap: 10px; }
-    .dialog-button {
-      background: linear-gradient(135deg, #555, #777);
-      color: #fff; border: none; border-radius: 4px;
-      padding: 6px 10px; cursor: pointer;
-      transition: background 0.3s, transform 0.2s;
-    }
-    .dialog-button:hover {
-      background: linear-gradient(135deg, #777, #555);
-      transform: scale(1.05);
-    }
+    .dialog-button { background: linear-gradient(135deg, #555, #777); color: #fff; border: none; border-radius: 4px; padding: 6px 10px; cursor: pointer; transition: background 0.3s, transform 0.2s; }
+    .dialog-button:hover { background: linear-gradient(135deg, #777, #555); transform: scale(1.05); }
     .dialog-button:active { transform: scale(0.95); }
   </style>
 </head>
@@ -461,24 +308,19 @@ function isVideo($fileName) {
         <div class="top-row">
           <h2>Folders</h2>
           <?php if ($parentLink): ?>
-            <!-- Gray back button -->
             <a class="btn-back" href="<?php echo $parentLink; ?>" title="Back">
               <i class="fas fa-arrow-left"></i>
             </a>
           <?php endif; ?>
-          <!-- Gray new folder -->
           <button type="button" class="btn" title="Create New Folder" onclick="createFolder()">
             <i class="fas fa-folder-plus"></i>
           </button>
-          <!-- Gray delete folder (hidden until selection) -->
           <button type="button" class="btn" id="btnDeleteFolder" title="Delete selected folder" style="display:none;">
             <i class="fas fa-trash"></i>
           </button>
-          <!-- Gray rename folder (hidden until selection) -->
           <button type="button" class="btn" id="btnRenameFolder" title="Rename selected folder" style="display:none;">
             <i class="fas fa-edit"></i>
           </button>
-          <!-- Red logout button -->
           <a href="logout.php" class="btn logout-btn" title="Logout">
             <i class="fa fa-sign-out" aria-hidden="true"></i>
           </a>
@@ -495,7 +337,6 @@ function isVideo($fileName) {
         </ul>
       </div>
     </div>
-    <!-- SIDEBAR OVERLAY (mobile) -->
     <div class="sidebar-overlay" id="sidebarOverlay"></div>
 
     <!-- MAIN CONTENT -->
@@ -508,7 +349,6 @@ function isVideo($fileName) {
           <h1><?php echo ($currentRel === 'Home') ? 'Home' : htmlspecialchars($currentRel); ?></h1>
         </div>
         <div>
-          <!-- Upload Form: hidden file input -->
           <form id="uploadForm" method="POST" enctype="multipart/form-data" action="explorer.php?folder=<?php echo urlencode($currentRel); ?>">
             <input type="file" name="upload_files[]" multiple id="fileInput" style="display:none;" />
             <button type="button" class="btn" id="uploadBtn" title="Upload" style="width:36px; height:36px;">
@@ -528,7 +368,7 @@ function isVideo($fileName) {
         <div class="file-list">
           <?php foreach ($files as $fileName): ?>
             <?php
-              $fileURL = '/selfhostedgdrive/explorer.php?file=' . urlencode($currentRel . '/' . $fileName); // Secure URL via explorer.php
+              $fileURL = "/selfhostedgdrive/explorer.php?file=" . urlencode($currentRel . '/' . $fileName);
               $iconClass = getIconClass($fileName);
               $canPreview = (isImage($fileName) || isVideo($fileName));
             ?>
@@ -565,7 +405,7 @@ function isVideo($fileName) {
     </div>
   </div>
 
-  <!-- DIALOG MODAL (for alerts, confirms, and prompts) -->
+  <!-- DIALOG MODAL -->
   <div id="dialogModal">
     <div class="dialog-content">
       <div class="dialog-message" id="dialogMessage"></div>
@@ -577,7 +417,6 @@ function isVideo($fileName) {
     let selectedFolder = null;
     let currentXhr = null;
 
-    // Toggle sidebar for mobile
     function toggleSidebar() {
       const sb = document.getElementById('sidebar');
       const overlay = document.getElementById('sidebarOverlay');
@@ -586,7 +425,6 @@ function isVideo($fileName) {
     }
     document.getElementById('sidebarOverlay').addEventListener('click', toggleSidebar);
 
-    // Folder selection
     function selectFolder(element, folderName) {
       document.querySelectorAll('.folder-item.selected').forEach(item => item.classList.remove('selected'));
       element.classList.add('selected');
@@ -595,10 +433,10 @@ function isVideo($fileName) {
       document.getElementById('btnRenameFolder').style.display = 'flex';
     }
     function openFolder(folderPath) {
+      console.log("Opening folder: " + folderPath);
       window.location.href = 'explorer.php?folder=' + folderPath;
     }
 
-    // showPrompt for custom input
     function showPrompt(message, defaultValue, callback) {
       const dialogModal = document.getElementById('dialogModal');
       const dialogMessage = document.getElementById('dialogMessage');
@@ -695,7 +533,6 @@ function isVideo($fileName) {
       dialogModal.classList.add('show');
     }
 
-    // Create Folder
     function createFolder() {
       showPrompt("Enter new folder name:", "", function(folderName) {
         if (folderName && folderName.trim() !== "") {
@@ -718,7 +555,6 @@ function isVideo($fileName) {
       });
     }
 
-    // Rename Folder
     document.getElementById('btnRenameFolder').addEventListener('click', function() {
       if (!selectedFolder) return;
       showPrompt("Enter new folder name:", selectedFolder, function(newName) {
@@ -747,7 +583,6 @@ function isVideo($fileName) {
       });
     });
 
-    // Delete Folder
     document.getElementById('btnDeleteFolder').addEventListener('click', function() {
       if (!selectedFolder) return;
       showConfirm(`Delete folder "${selectedFolder}"?`, () => {
@@ -759,7 +594,6 @@ function isVideo($fileName) {
       });
     });
 
-    // Rename File
     function renameFilePrompt(fileName) {
       let dotIndex = fileName.lastIndexOf(".");
       let baseName = fileName;
@@ -795,7 +629,6 @@ function isVideo($fileName) {
       });
     }
 
-    // Delete File
     function confirmFileDelete(fileName) {
       showConfirm(`Delete file "${fileName}"?`, () => {
         let form = document.createElement('form');
@@ -806,8 +639,8 @@ function isVideo($fileName) {
       });
     }
 
-    // Download File
     function downloadFile(fileURL) {
+      console.log("Downloading: " + fileURL);
       const link = document.createElement('a');
       link.href = fileURL;
       link.download = '';
@@ -816,7 +649,6 @@ function isVideo($fileName) {
       document.body.removeChild(link);
     }
 
-    // Upload logic
     const uploadForm = document.getElementById('uploadForm');
     const fileInput = document.getElementById('fileInput');
     const uploadBtn = document.getElementById('uploadBtn');
@@ -872,33 +704,35 @@ function isVideo($fileName) {
       }
     });
 
-    // Preview modal logic
     function openPreviewModal(fileURL, fileName) {
-      console.log("Preview URL: " + fileURL);
+      console.log("Previewing: " + fileURL);
+      const previewContainer = document.getElementById('previewContainer');
       previewContainer.innerHTML = '';
       let lowerName = fileName.toLowerCase();
       if (lowerName.match(/\.(png|jpe?g|gif|heic)$/)) {
         let img = document.createElement('img');
         img.src = fileURL;
         img.onerror = () => console.log("Image failed to load: " + fileURL);
-        img.onload = () => console.log("Image loaded successfully");
+        img.onload = () => console.log("Image loaded: " + fileURL);
         previewContainer.appendChild(img);
       } else if (lowerName.match(/\.(mp4|webm|mov|avi|mkv)$/)) {
         let video = document.createElement('video');
         video.src = fileURL;
         video.controls = true;
         video.autoplay = true;
+        video.onerror = () => console.log("Video failed to load: " + fileURL);
+        video.onload = () => console.log("Video loaded: " + fileURL);
         previewContainer.appendChild(video);
       } else {
-        downloadFile(fileURL); // Fallback to download if not previewable
+        downloadFile(fileURL);
         return;
       }
-      previewModal.style.display = 'flex';
+      document.getElementById('previewModal').style.display = 'flex';
     }
     window.openPreviewModal = openPreviewModal;
     function closePreviewModal() {
-      previewModal.style.display = 'none';
-      previewContainer.innerHTML = '';
+      document.getElementById('previewModal').style.display = 'none';
+      document.getElementById('previewContainer').innerHTML = '';
     }
     window.closePreviewModal = closePreviewModal;
   </script>
@@ -908,18 +742,22 @@ function isVideo($fileName) {
 <?php
 // Handle file serving for authenticated users
 if (isset($_GET['file'])) {
-    if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
-        header("Location: index.php");
-        exit;
-    }
+    file_put_contents($debug_log, "File request: " . $_GET['file'] . "\n", FILE_APPEND);
     $filePath = realpath($baseDir . '/' . $_GET['file']);
+    file_put_contents($debug_log, "Resolved file path: " . ($filePath ? $filePath : "Not found") . "\n", FILE_APPEND);
+
     if ($filePath && strpos($filePath, $baseDir) === 0 && file_exists($filePath)) {
-        header('Content-Type: application/octet-stream');
-        header('Content-Disposition: attachment; filename="' . basename($filePath) . '"');
+        $mime = mime_content_type($filePath);
+        header("Content-Type: $mime");
+        if (!isImage(basename($filePath)) && !isVideo(basename($filePath))) {
+            header('Content-Disposition: attachment; filename="' . basename($filePath) . '"');
+        }
         header('Content-Length: ' . filesize($filePath));
         readfile($filePath);
+        file_put_contents($debug_log, "Served file: $filePath\n", FILE_APPEND);
         exit;
     } else {
+        file_put_contents($debug_log, "File not found or access denied: $filePath\n", FILE_APPEND);
         http_response_code(404);
         echo "File not found.";
         exit;
