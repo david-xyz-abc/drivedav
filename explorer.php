@@ -23,7 +23,7 @@ $baseDir = realpath($homeDirPath);
 file_put_contents($debug_log, "BaseDir: $baseDir\n", FILE_APPEND);
 
 // Redirect to Home folder by default if no folder specified
-if (!isset($_GET['folder'])) {
+if (!isset($_GET['folder']) && !isset($_GET['action'])) {
     file_put_contents($debug_log, "No folder specified, redirecting to Home\n", FILE_APPEND);
     header("Location: explorer.php?folder=Home");
     exit;
@@ -641,12 +641,7 @@ function isVideo($fileName) {
 
     function downloadFile(fileURL) {
       console.log("Downloading: " + fileURL);
-      const link = document.createElement('a');
-      link.href = fileURL;
-      link.download = '';
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      window.location.href = fileURL; // Force download via server
     }
 
     const uploadForm = document.getElementById('uploadForm');
@@ -747,19 +742,23 @@ if (isset($_GET['action']) && $_GET['action'] === 'serve' && isset($_GET['file']
     file_put_contents($debug_log, "Resolved file path: " . ($filePath ? $filePath : "Not found") . "\n", FILE_APPEND);
 
     if ($filePath && strpos($filePath, $baseDir) === 0 && file_exists($filePath)) {
-        $mime = mime_content_type($filePath);
+        $mime = mime_content_type($filePath) ?: 'application/octet-stream';
         file_put_contents($debug_log, "MIME type: $mime\n", FILE_APPEND);
         header("Content-Type: $mime");
+        header("Content-Length: " . filesize($filePath));
         if (!isImage(basename($filePath)) && !isVideo(basename($filePath))) {
             header('Content-Disposition: attachment; filename="' . basename($filePath) . '"');
+        } else {
+            header('Content-Disposition: inline; filename="' . basename($filePath) . '"');
         }
-        header('Content-Length: ' . filesize($filePath));
+        ob_clean(); // Clear output buffer
+        flush(); // Flush system buffer
         readfile($filePath);
         file_put_contents($debug_log, "Served file: $filePath\n", FILE_APPEND);
         exit;
     } else {
         file_put_contents($debug_log, "File not found or access denied: $filePath\n", FILE_APPEND);
-        http_response_code(404);
+        header("HTTP/1.1 404 Not Found");
         echo "File not found.";
         exit;
     }
