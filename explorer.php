@@ -1,25 +1,37 @@
 <?php
 session_start();
 
+// Check if user is logged in
+if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+    header("Location: index.php"); // Redirect to login page
+    exit;
+}
+
 /************************************************
- * 1. Define the "webdav" directory as base (no Home)
+ * 1. Define the "Home" directory as base
  ************************************************/
-$homeDirPath = "/var/www/html/webdav"; // Changed from /var/www/html/webdav/Home
+$homeDirPath = "/var/www/html/webdav/Home";
 if (!is_dir($homeDirPath)) {
-    mkdir($homeDirPath, 0777, true); // Using 0777 to match your permissive setup
+    mkdir($homeDirPath, 0777, true); // Using 0777 per your preference
 }
 $baseDir = realpath($homeDirPath);
+
+// Redirect to Home folder by default if no folder specified
+if (!isset($_GET['folder'])) {
+    header("Location: explorer.php?folder=Home");
+    exit;
+}
 
 /************************************************
  * 2. Determine current folder (GET param)
  ************************************************/
-$currentRel = isset($_GET['folder']) ? $_GET['folder'] : '';
+$currentRel = isset($_GET['folder']) ? $_GET['folder'] : 'Home';
 $currentRel = trim(str_replace('..', '', $currentRel), '/');
 
 $currentDir = realpath($baseDir . '/' . $currentRel);
 if ($currentDir === false || strpos($currentDir, $baseDir) !== 0) {
     $currentDir = $baseDir;
-    $currentRel = '';
+    $currentRel = 'Home';
 }
 
 /************************************************
@@ -30,7 +42,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_folder'])) {
     if ($folderName !== '') {
         $targetPath = $currentDir . '/' . $folderName;
         if (!file_exists($targetPath)) {
-            mkdir($targetPath, 0777); // Using 0777
+            mkdir($targetPath, 0777);
         }
     }
     header("Location: explorer.php?folder=" . urlencode($currentRel));
@@ -151,7 +163,7 @@ sort($folders);
 sort($files);
 
 /************************************************
- * 10. "Back" link if not at base
+ * 10. "Back" link if not at Home
  ************************************************/
 $parentLink = '';
 if ($currentDir !== $baseDir) {
@@ -487,7 +499,7 @@ function isVideo($fileName) {
           <button class="hamburger" onclick="toggleSidebar()">
             <i class="fas fa-bars"></i>
           </button>
-          <h1><?php echo ($currentRel === '') ? 'Home' : htmlspecialchars($currentRel); ?></h1>
+          <h1><?php echo ($currentRel === 'Home') ? 'Home' : htmlspecialchars($currentRel); ?></h1>
         </div>
         <div>
           <!-- Upload Form: hidden file input -->
@@ -510,8 +522,7 @@ function isVideo($fileName) {
         <div class="file-list">
           <?php foreach ($files as $fileName): ?>
             <?php
-              // Updated: Removed /Home from the URL path
-              $fileURL = '/webdav/' . ($currentRel ? $currentRel . '/' : '') . rawurlencode($fileName);
+              $fileURL = '/selfhostedgdrive/explorer.php?file=' . urlencode($currentRel . '/' . $fileName); // Secure URL via explorer.php
               $iconClass = getIconClass($fileName);
               $canPreview = (isImage($fileName) || isVideo($fileName));
             ?>
@@ -519,7 +530,7 @@ function isVideo($fileName) {
               <i class="<?php echo $iconClass; ?> file-icon"></i>
               <div class="file-name"
                    title="<?php echo htmlspecialchars($fileName); ?>"
-                   onclick="<?php echo $canPreview ? "openPreviewModal('$fileURL','".addslashes($fileName)."')" : "window.open('$fileURL','_blank')"; ?>">
+                   onclick="<?php echo $canPreview ? "openPreviewModal('$fileURL','".addslashes($fileName)."')" : "downloadFile('$fileURL')"; ?>">
                 <?php echo htmlspecialchars($fileName); ?>
               </div>
               <div class="file-actions">
@@ -873,7 +884,7 @@ function isVideo($fileName) {
         video.autoplay = true;
         previewContainer.appendChild(video);
       } else {
-        window.open(fileURL, '_blank');
+        downloadFile(fileURL); // Fallback to download if not previewable
         return;
       }
       previewModal.style.display = 'flex';
@@ -887,3 +898,25 @@ function isVideo($fileName) {
   </script>
 </body>
 </html>
+
+<?php
+// Handle file serving for authenticated users
+if (isset($_GET['file'])) {
+    if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+        header("Location: index.php");
+        exit;
+    }
+    $filePath = realpath($baseDir . '/' . $_GET['file']);
+    if ($filePath && strpos($filePath, $baseDir) === 0 && file_exists($filePath)) {
+        header('Content-Type: application/octet-stream');
+        header('Content-Disposition: attachment; filename="' . basename($filePath) . '"');
+        header('Content-Length: ' . filesize($filePath));
+        readfile($filePath);
+        exit;
+    } else {
+        http_response_code(404);
+        echo "File not found.";
+        exit;
+    }
+}
+?>
