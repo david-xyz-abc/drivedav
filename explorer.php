@@ -1,15 +1,12 @@
 <?php
 session_start();
-if (!isset($_SESSION['logged_in']) || $_SESSION['logged_in'] !== true) {
-    header("Location: index.php");
-    exit;
-}
+
 /************************************************
- * 1. Define the "Home" directory as base
+ * 1. Define the "webdav" directory as base (no Home)
  ************************************************/
-$homeDirPath = "/var/www/html/webdav/Home";
+$homeDirPath = "/var/www/html/webdav"; // Changed from /var/www/html/webdav/Home
 if (!is_dir($homeDirPath)) {
-    mkdir($homeDirPath, 0755, true);
+    mkdir($homeDirPath, 0777, true); // Using 0777 to match your permissive setup
 }
 $baseDir = realpath($homeDirPath);
 
@@ -33,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['create_folder'])) {
     if ($folderName !== '') {
         $targetPath = $currentDir . '/' . $folderName;
         if (!file_exists($targetPath)) {
-            mkdir($targetPath, 0755);
+            mkdir($targetPath, 0777); // Using 0777
         }
     }
     header("Location: explorer.php?folder=" . urlencode($currentRel));
@@ -154,7 +151,7 @@ sort($folders);
 sort($files);
 
 /************************************************
- * 10. "Back" link if not at Home
+ * 10. "Back" link if not at base
  ************************************************/
 $parentLink = '';
 if ($currentDir !== $baseDir) {
@@ -513,7 +510,8 @@ function isVideo($fileName) {
         <div class="file-list">
           <?php foreach ($files as $fileName): ?>
             <?php
-              $fileURL = 'webdav/Home/' . ($currentRel ? $currentRel . '/' : '') . rawurlencode($fileName);
+              // Updated: Removed /Home from the URL path
+              $fileURL = '/webdav/' . ($currentRel ? $currentRel . '/' : '') . rawurlencode($fileName);
               $iconClass = getIconClass($fileName);
               $canPreview = (isImage($fileName) || isVideo($fileName));
             ?>
@@ -793,7 +791,12 @@ function isVideo($fileName) {
 
     // Download File
     function downloadFile(fileURL) {
-      window.open(fileURL, '_blank');
+      const link = document.createElement('a');
+      link.href = fileURL;
+      link.download = '';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
     }
 
     // Upload logic
@@ -853,14 +856,15 @@ function isVideo($fileName) {
     });
 
     // Preview modal logic
-    const previewModal = document.getElementById('previewModal');
-    const previewContainer = document.getElementById('previewContainer');
     function openPreviewModal(fileURL, fileName) {
+      console.log("Preview URL: " + fileURL);
       previewContainer.innerHTML = '';
       let lowerName = fileName.toLowerCase();
       if (lowerName.match(/\.(png|jpe?g|gif|heic)$/)) {
         let img = document.createElement('img');
         img.src = fileURL;
+        img.onerror = () => console.log("Image failed to load: " + fileURL);
+        img.onload = () => console.log("Image loaded successfully");
         previewContainer.appendChild(img);
       } else if (lowerName.match(/\.(mp4|webm|mov|avi|mkv)$/)) {
         let video = document.createElement('video');
